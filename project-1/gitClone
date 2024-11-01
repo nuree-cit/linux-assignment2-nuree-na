@@ -16,15 +16,12 @@ gitFolder="2420-as2-starting-files"
 # - if yes, print it is success.
 # - if not, print it is failed.
 if [[ -d ./$gitFolder ]] ; then
-  echo "repositories exist!"
+  echo "git repository [${gitAddress}] already exist!"
 else
   git clone $gitAddress
   if [[ -d ./$gitFolder ]] ; then
-    echo "git repository ${gitAddress} has been successfully cloned!"
+    echo "git repository [${gitAddress}] has been successfully cloned!"
   else
     echo "clone failed!"
+  fi
 fi
-
-
-
-
