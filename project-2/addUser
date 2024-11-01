@@ -1,0 +1,281 @@
+#!/bin/bash
+
+# 'addUser' script does:
+#   - It will add a new user.
+#   - User provide username as an argument with option '-u'.
+#   - User specify which shell they want to use as an argument with option '-s'.
+#   - User can provide another groupname they want to get in as an argument with option '-g' 
+
+# reference:
+# - https://www.ibm.com/docs/en/aix/7.2?topic=s-sed-command
+# - https://www.digitalocean.com/community/tutorials/using-grep-regular-expressions-to-search-for-text-patterns-in-linux
+# - https://www.gnu.org/software/grep/manual/grep.html
+
+# empty variables.
+# - these variables are initially empty and will be filled by function success. 
+# - This is an intentional setup to check wether the function works or not in later script.
+# 'userName' will be fiiled with the user name if it is available.
+# 'userHome' will be filled with the user's default home path if the user name is available.
+# 'userShell' will be fiiled with the user specifed shell if it is a valid shell.
+# 'userId' will be filled with the user id that is availiable.
+# 'userGroup' will be filled with the group name that user want to enroll if it is exist group.
+userName=
+userHome=
+userShell=
+userId=
+userGroup=
+
+# Function 'checkUserName'
+# - It takes the first parameter in a local variable 'name'.
+# - It check if the 'name:' exist at the beginning of any lines in the /etc/passwd file.
+#   -q: quitely check result with 0 or 1 without printing match data.
+#    ^: search the data from beginning of lines. 
+# - If it exists:
+#   - print that is exist and return 1 (false).
+# - If not exists:
+#   - update variable 'userName' with the value of variable 'name'.
+#   - update variable 'userHome' with the path of the user 'name'.
+#   - return 0 (true).
+checkUserName() {
+    local name=$1
+    if grep -q "^${name}:" /etc/passwd; then
+        echo "Username '${name}' already exists!"
+        return 1
+    else
+        userName="$name"
+        userHome="/home/${name}"
+        return 0
+    fi
+}
+
+# Function 'checkShell'
+# - It takes the first parameter in a local variable 'shell'.
+# - It check if the 'shell' exist in the /etc/passwd file.
+#   -F: fix the pattern 'shell' as a string.
+#   -x: search as a line that exaclty matches with the 'shell'
+# - If it exists:
+#   - that means the user shell is valid.
+#   - update variable 'userShell' with the value of variable 'shell'.
+#   - return 0 (true).
+# - If not exists:
+#   - print that does not exist and return 1 (false).
+checkShell() {
+    local shell=$1
+    if grep -Fxq "${shell}" "/etc/shells"; then
+        userShell="$shell"
+        return 0
+    else
+        echo "The '${shell}' is an invalid shell type!"
+        return 1
+    fi
+}
+
+# Function 'checkId'
+# - It loops through the numbers from 1000 to 4294967295 by adding up 1 after each time.
+#   - Since user ids up to 999 are reserved for the system user, it will start from 1000.
+#   - 4294967295 is the maximum number of user id in linux.
+#   - user id 65534 is also reserved for user 'nobody', however it will automatically skip when it reaches the number.
+#   - for each number, it will check: 
+#       - if the number not exist in specific position (which means after three colons, can have any characters between colons) of the file '/etc/passwd' and '/etc/group'.
+#           - ^: beginning point of line
+#           - [^:]*:: any characters that is not ':', followed by ':'.
+#           - update variable 'userId' with the value of variable 'num'.
+#           - break the loop.
+checkId() {
+    for (( num=1000; num<4294967295; num++ )); do
+        if ! grep -q "^[^:]*:[^:]*:${num}:" /etc/passwd && ! grep -q "^[^:]*:[^:]*:${num}:" /etc/group ; then
+            userId="$num"
+            break
+        fi
+    done
+}
+
+# Function 'checkGroup'
+# - It takes the first parameter in a local variable 'group'.
+# - It checks if the 'group:' exist at the beginning of any lines in the /etc/group file.
+# - If it exists:
+#   - update variable 'userGroup' with the value of variable 'group'.
+#   - return 0 (true).
+# - If not exists:
+#   - print that does not exist and return 1 (false).
+checkGroup() {
+    local group=$1
+    if grep -q "^${group}:" /etc/group; then
+        userGroup="$group"
+        return 0
+    else
+        echo "Group name '${group}' does not exist."
+        return 1
+    fi
+}
+
+# Function 'mkHome'
+# - It takes the first parameter in a local variable 'homePath'.
+# - It checks if the directory with the path of 'homePath' does not exist.
+# - If not exists:
+#   - make a directory with the path 'homePath'.
+# - If it exists:
+#   - print that exist.
+mkHome() {
+    local homePath=$1
+    if [[ ! -d "${homePath}" ]]; then
+        mkdir "${homePath}" 
+    else
+        echo "Home directory '${homePath}' already exists."
+    fi
+}
+
+# Function 'chownGroup'
+# - It takes the first parameter in a local variable 'name'.
+# - It takes the second parameter in a local variable 'path'.
+# - It checks if the 'name:' exist at the beginning of any lines in the '/etc/passwd' file and if the directory 'path' exist.
+# - If both are true:
+#   - change ownership of the 'path' to the user 'name' and group 'name'
+#   - return 0 (true).
+# - If false:
+#   - print that request failed and return 1 (false).
+chownGroup() {
+    local name=$1
+    local path=$2
+    if grep -q "^${name}:" /etc/passwd && -d "${path}";  then
+        chown "${name}:${name}" "${path}"
+        return 0
+    else
+        echo "changing ownership failed!"
+        return 1
+    fi
+}
+
+# Function 'mkGroup'
+# - It takes the first parameter in a local variable 'groupname'.
+# - It takes the second parameter in a local variable 'groupid'.
+# - It checks if the 'groupname:' not exist at the beginning of any lines in the '/etc/group' file.
+# - If not exists:
+#   - append a new line with 'groupname' and 'groupid' in to the file '/etc/group'.
+#       - this line will be a correct form of adding group in the file '/etc/group'.
+#       - return 0 (true).
+# - If it exists:
+#   - print that group name 'groupname' exists and return 1 (false).
+mkGroup(){
+    local groupname=$1
+    local groupid=$2
+    if ! grep -q "^${groupname}:" /etc/group; then
+        echo "${groupname}:x:${groupid}:" >> /etc/group
+        return 0
+    else
+        echo "Group name '${groupname}' already exists."
+        return 1
+    fi
+}
+
+# Function 'addUser'
+# - It takes the first parameter in a local variable 'Name'.
+# - It takes the second parameter in a local variable 'ID'.
+# - It takes the third parameter in a local variable 'Shell'.
+# - It creates a local variable 'Path' with the variable 'Name'.
+# - It appends a new line with variables to the file '/etc/passwd'.
+#   - this line will create a new user manually with correct format of information.
+# - Since this function only be used after checking all the other information given, no need to check error here.
+addUser(){
+    local Name=$1
+    local ID=$2
+    local Shell=$3
+    local Path="/home/${Name}"
+    echo "${Name}:x:${ID}:${ID}::${Path}:${Shell}" >> /etc/passwd
+}
+
+# Function 'addGroup'
+# - It takes the first parameter in a local variable 'group'.
+# - It takes the second parameter in a local variable 'user'.
+# - It creates a local variable 'matchLine' that grep a line start with 'group:' in the 'etc/group' file.
+#   - Since this function only be run after checking the group exist, this grep command always return the match line.
+# - Check if the 'matchLine' line end with the ':'.
+#   - if it end with ':':
+#       - change the line 'matchLine' to the 'matchLine''user' and update the original file '/etc/group'.
+#           - sed: find pattern and change text.
+#           -  -i: update the original file.
+#           - s|...|...|: substitute data in the left |...| to the data in the right |...|.
+#   - if it not end with ':':
+#       - change the line 'matchLine' to the 'matchLine' ',' 'user' and update the original file '/etc/group'.
+addGroup(){
+    local group=$1
+    local user=$2
+    local matchLine=$(grep "^${group}:" /etc/group)
+    if [[ $matchLine =~ :$ ]]; then
+        sed -i "s|^${matchLine}$|${matchLine}${user}|" /etc/group
+    else
+        sed -i "s|^${matchLine}$|${matchLine},${user}|" /etc/group
+    fi
+}
+
+# Check if no options are given or something that doesn't follow option format is given:
+#   - print guide messages.
+if [[ $# -eq 0 || $@ != -* ]]; then
+  echo "Options should be provided!"
+  echo "-u: provide a username you want to use as an argument."
+  echo "-s: provide a specific shell you want to use as an argument."
+  echo "-g: (OPTIONAL) provide a specific group name you want to add the user as an argument."
+  exit 1
+fi
+
+# use 'getopts' and give three options 'u', 's' and 'g'. make all options require arguments with ':'.
+# - for the case the option is 'u'
+#   - Call the function 'checkUserName' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
+# - for the case the option is 's'
+#   - Call the function 'checkShell' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
+# - for the case the option is 'g'
+#   - Call the function 'checkGroup' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
+# - for the any other options:
+# - It will generate default error messages and exit with exit code 1.
+while getopts "u:s:g:" opt; do
+    case $opt in
+        u)
+            checkUserName "${OPTARG}" || exit 1
+        ;;
+        s)
+            checkShell "${OPTARG}" || exit 1
+        ;;
+        g)
+            checkGroup "${OPTARG}" || exit 1
+        ;;
+        ?)
+            exit 1
+        ;;  
+    esac
+done
+
+# Call the function 'checkId' to find and store available user id to the variable 'userId'
+# check if a variable 'userName' is not null and a variable 'userId' is not null and a variable 'userShell' is not null
+# - if variables 'userName', 'userId', 'userShell' have values:
+#   - this means all function called without faliure.
+#   - Call the function 'addUser' to add user with the values of the variables.
+#   - Call the function 'mkHome' to create a new user's home directory.
+#   - Call the function 'mkGroup' to create a new user's default group.
+#   - Call the function 'chownGroup' to change ownership of user's home path.
+#   - check if directory 'userHome' exists:
+#       - copy files from the path '/etc/skel' to 'userHome/'
+#       - -r: recursively copy frome the folder.
+#       - .: everything in the directory 'etc/skel'
+#   - check if 'userGroup' is not null:
+#       - this means user provided additional group info that they want to enroll.
+#       - Call the function 'addGroup' to add users in to the given group name 'userGroup'
+#   - require user to create password by using 'passwd'
+# - if not all variables 'userName', 'userId', 'userShell' have values:
+#   - print that information is incorrect and exit script with exitcode 1.
+checkId
+if [[ -n "${userName}" && -n "${userId}" && -n "${userShell}" ]]; then
+    addUser "${userName}" "${userId}" "${userShell}"
+    mkHome "${userHome}"
+    mkGroup "${userName}" "${userId}"
+    chownGroup "${userName}" "${userHome}"
+    if [[ -d $userHome ]]; then
+        cp -r /etc/skel/. "${userHome}/"
+    fi
+    if [[ -n $userGroup ]]; then
+        addGroup "${userGroup}" "${userName}" 
+    fi
+    passwd "${userName}"
+else
+    echo "incorrect information!"
+    exit 1
+fi
