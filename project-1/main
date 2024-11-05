@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# 'main' script does:
+#   - It will call functions from two packages:
+#     - from the script 'configRepo': 
+#       - functions for cloning git repository and creating symbolic links.
+#     - from the script 'installPackage': 
+#       - functions for create packages list, open packages list, and install packages list.
+#   - User can call each functions with following options:
+#     -c: create a file contains the list of packages that the user want to download.
+#        - argument should be provided for the filename.
+#     -o: open the textfile that contains the list of packages that the user want to download.
+#        - argument should be provided for the filename.
+#     -i: install the packages in the textfile.
+#        - argument should be provided for the filename.
+#     -s: download the given repository and create symbolic links.
+#        - argument should be provided for the username.
+
+# import scripts 'installPackage' and 'configRepo'
+source ./installPackage
+source ./configRepo
+
+# Check if the script run without sudo previlege:
+# - by checking the user id of who execute the script is 0 (always reserved for a root user) or else.
+# - if not, print that user need sudo privilege.
+# - exit script with exit code 1.
+# else if no options are given: 
+# - by cheking number of given parameter is 0 or not
+# - print that option should be provided.
+# - print option usage guide.
+# - exit script with exit code 1.
+# else if given parameter does not follow correct syntax:
+# - which means that does not start with '-'
+# - print that option format is wrong.
+# - print option usage guide.
+# - exit script with exit code 1.
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "sudo privilege is required to run this script!"
+    exit 1
+elif [[ $# -eq 0 ]]; then
+    echo "Options should be provided!"
+    echo "-c (argument: filename): create a file to contains the list of packages to download."
+    echo "-o (argument: filename): open a file with nvim editor."
+    echo "-i (argument: filename): install packages in the file that is provided."
+    echo "-s (argument: username): clone git repository and create symbolic links."
+    exit 1
+elif [[ $@ != -* ]]; then
+    echo "Options should be provided!"
+    echo "-c (argument: filename): create a file to contains the list of packages to download."
+    echo "-o (argument: filename): open a file with nvim editor."
+    echo "-i (argument: filename): install packages in the file that is provided."
+    echo "-s (argument: username): clone git repository and create symbolic links."
+    exit 1
+fi
+
+# use 'getopts' and give four options 'c','o','i' and 's'.
+# - make all of them require arguments with ':'.
+# - for the case the option is 'c'
+#   - Call the function 'createList' and provide an argument as a file name.
+#   - if it does not success, exit the script.
+# - for the case the option is 'o'
+#   - Call the function 'openList' and provide an argument as a file name.
+#   - if it does not success, exit the script.
+# - for the case the option is 'i'
+#   - Call the function 'installPackages' and provide an argument as a file name.
+#   - if it does not success, exit the script.
+# - for the case the option is 's'
+#   - Call the function 'gitClone' and provide an argument as a user name. 
+#       - if it does not success, exit the script.
+#   - if it success, call the function 'createSymbolicLink'.
+#       - if it does not success, exit the script.
+# - for the any other options:
+# - It will generate default error messages and exit with exit code 1.
+while getopts "c:o:i:s:" opt; do
+  case $opt in
+    c)
+        createList "${OPTARG}" || exit 1
+    ;;
+    o)
+        openList "${OPTARG}" || exit 1
+    ;;
+    i)
+        installPackages "${OPTARG}" || exit 1
+    ;;
+    s)
+        gitClone "${OPTARG}" || exit 1
+        createSymbolicLink "${OPTARG}" || exit 1
+    ;;
+    ?)
+        exit 1
+    ;;  
+  esac
+done
