@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# 'configRepo' script does:
+#   - It will clone the given git repository and store in the user home directory.
+#   - it will create symbolic links from user home directory to the given repository.
+
+# reference:
+# - https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository
+# - https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-links
+
+# 'gitAddress' stores the https link of the given git repository.
+# 'gitFolder' empty global varaible will be filled with repository path by successfully calling function. 
+# 'home' empty global varaible will be filled with user home path by successfully calling function.
+gitAddress="https://gitlab.com/cit2420/2420-as2-starting-files.git"
+gitFolder=
+home=
+
+# Function 'gitClone'
+# - This function takes a parameter as a user name and make a home path with the given name.
+# - it clone git repository.
+# - if it exists, it will skip cloning.
+gitClone() {
+    local user=$1
+    home="/home/${user}"
+    gitFolder="${home}/2420-as2-starting-files"
+    if [[ -d "$gitFolder" ]] ; then
+        echo "Git repository [${gitAddress}] already exists!"
+    else
+        git clone "$gitAddress"
+        if [[ -d "$gitFolder" ]] ; then
+            echo "Git repository [${gitAddress}] has been successfully cloned to '${home}'!"
+        else
+            echo "Cloning failed!"
+            return 1
+        fi
+    fi
+}
+# It takes the first parameter in a local variable 'user'.
+# It makes a user home path with the parameter 'user'.
+# It makes a path for cloned repository.
+# If the cloned path exists:
+#   -d: directory
+#   - print that repository exists and end function.
+# If not exists:
+#  - it clones the repository and check again if it exists.
+#  - if so, prints that repository cloned.
+#  - if not exists:
+#   - prints that cloning failed and return 1 (false)
+
+# Function 'createSymbolicLink'
+# - This function takes a parameter as a user name and make paths that are needed.
+# - it creates symbolic links.
+createSymbolicLink() {
+    local user=$1
+    local home="/home/${user}"
+    local homeBin="${home}/bin"
+    local homeConfig="${home}/.config"
+    ln -sf "$gitFolder/bin" "$homeBin" && echo "Symbolic link '${homeBin}' to folder '${gitFolder}/bin' has been created!" || { echo "Failed to create symbolic link for '${gitFolder}/bin'"; exit 1; }
+    ln -sf "$gitFolder/config" "$homeConfig" && echo "Symbolic link '${homeConfig}' to folder '${gitFolder}/config' has been created!" || { echo "Failed to create symbolic link for '${gitFolder}/config'"; exit 1; }
+    if [ -f "$home/.bashrc" ]; then
+        rm "$home/.bashrc"
+    fi
+    ln -sf "$gitFolder/home/bashrc" "$home/.bashrc" && echo "Symbolic link '${home}/.bashrc' to file '${gitFolder}/home/bashrc' has been created!" || { echo "Failed to create symbolic link for '${gitFolder}/home/bashrc'"; exit 1; }
+}
+# It takes the first parameter in a local variable 'user'.
+# It makes a user home path 'home' with the parameter 'user'.
+# It makes a user home/bin path 'homeBin'
+# It makes a user home/.config path 'homeConfig'
+# It makes a symbolic link from 'homeBin' to cloned repository's bin.
+# - if it works, print that symbolic link created. (combined with and && or || operator)
+# - if not works, print that failed and return 1 (false)
+# It makes a symbolic link from 'homeConfig' to cloned repository's config.
+# - if it works, print that symbolic link created.
+# - if not works, print that failed and return 1 (false)
+# If '.bashrc' file exists:
+# - remove the file.
+# It makes a symbolic link from 'home/.bashrc' to cloned repository's home/bashrc.
+# - if it works, print that symbolic link created.
+# - if not works, print that failed and return 1 (false)
+
+
+# export functions to make them usable in another script
+export -f gitClone
+export -f createSymbolicLink
