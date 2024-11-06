@@ -1,26 +1,39 @@
 #!/bin/bash
 
 # 'main' script does:
-#   - It will call functions from two packages:
-#     - from the script 'configRepo': 
-#       - functions for cloning git repository and creating symbolic links.
-#     - from the script 'installPackage': 
-#       - functions for create packages list, open packages list, and install packages list.
-#   - User can call each functions with following options:
-#     -c: create a file contains the list of packages that the user want to download.
+#   - It will call two scripts:
+#     - the script 'configRepo' does: 
+#       - cloning git repository and creating symbolic links.
+#     - the script 'installPackage' does: 
+#       - install packages list from the given file.
+#   - User can call each script with following options:
+#     -i: install packages in the file.
 #        - argument should be provided for the filename.
-#     -o: open the textfile that contains the list of packages that the user want to download.
-#        - argument should be provided for the filename.
-#     -i: install the packages in the textfile.
-#        - argument should be provided for the filename.
-#     -s: download the given repository and create symbolic links.
+#     -c: clone the repository and config the symbolic links. 
 #        - argument should be provided for the username.
 
-# import scripts 'installPackage' and 'configRepo'
-source ./installPackage
-source ./configRepo
-
-# Check if the script run without sudo previlege:
+# Initial checking for error handling. 
+# check if the user run this script with sudo previlege.
+# check if any option is given
+# check if options start with '-'. 
+# reference:
+# - https://unix.stackexchange.com/questions/50563/how-can-i-detect-that-no-options-were-passed-with-getopts
+# - https://stackoverflow.com/questions/18215973/how-to-check-if-running-as-root-in-a-bash-script
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "sudo privilege is required to run this script!"
+    exit 1
+elif [[ $# -eq 0 ]]; then
+    echo "Options should be provided!"
+    echo "-i (argument: FILENAME): install packages from the file [FILENAME]."
+    echo "-c (argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    exit 1
+elif [[ $@ != -* ]]; then
+    echo "Options should start with '-'!"
+    echo "-i (argument: FILENAME): install packages from the file [FILENAME]."
+    echo "-c (argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    exit 1
+fi
+# if the script run without sudo previlege:
 # - by checking the user id of who execute the script is 0 (always reserved for a root user) or else.
 # - if not, print that user need sudo privilege.
 # - exit script with exit code 1.
@@ -34,60 +47,31 @@ source ./configRepo
 # - print that option format is wrong.
 # - print option usage guide.
 # - exit script with exit code 1.
-if [[ "$(id -u)" -ne 0 ]]; then
-    echo "sudo privilege is required to run this script!"
-    exit 1
-elif [[ $# -eq 0 ]]; then
-    echo "Options should be provided!"
-    echo "-c (argument: filename): create a file to contains the list of packages to download."
-    echo "-o (argument: filename): open a file with nvim editor."
-    echo "-i (argument: filename): install packages in the file that is provided."
-    echo "-s (argument: username): clone git repository and create symbolic links."
-    exit 1
-elif [[ $@ != -* ]]; then
-    echo "Options should be provided!"
-    echo "-c (argument: filename): create a file to contains the list of packages to download."
-    echo "-o (argument: filename): open a file with nvim editor."
-    echo "-i (argument: filename): install packages in the file that is provided."
-    echo "-s (argument: username): clone git repository and create symbolic links."
-    exit 1
-fi
 
-# use 'getopts' and give four options 'c','o','i' and 's'.
-# - make all of them require arguments with ':'.
-# - for the case the option is 'c'
-#   - Call the function 'createList' and provide an argument as a file name.
-#   - if it does not success, exit the script.
-# - for the case the option is 'o'
-#   - Call the function 'openList' and provide an argument as a file name.
-#   - if it does not success, exit the script.
-# - for the case the option is 'i'
-#   - Call the function 'installPackages' and provide an argument as a file name.
-#   - if it does not success, exit the script.
-# - for the case the option is 's'
-#   - Call the function 'gitClone' and provide an argument as a user name. 
-#       - if it does not success, exit the script.
-#   - if it success, call the function 'createSymbolicLink'.
-#       - if it does not success, exit the script.
-# - for the any other options:
-# - It will generate default error messages and exit with exit code 1.
-while getopts "c:o:i:s:" opt; do
+# Give users option to run script that they want.
+# Provide default error handling with getopts and case.
+while getopts "i:c:" opt; do
   case $opt in
-    c)
-        createList "${OPTARG}" || exit 1
-    ;;
-    o)
-        openList "${OPTARG}" || exit 1
-    ;;
     i)
-        installPackages "${OPTARG}" || exit 1
+        ./installPackage "${OPTARG}" || exit 1
     ;;
-    s)
-        gitClone "${OPTARG}" || exit 1
-        createSymbolicLink "${OPTARG}" || exit 1
+    c)
+        ./configRepo "${OPTARG}" || exit 1
     ;;
     ?)
         exit 1
     ;;  
   esac
 done
+# use 'getopts' to give two options 'i' and 'c'.
+# - make all of them require arguments with ':'.
+# - for the case the option is 'i':
+#   - Call the script 'installPackage' and run it with provided argument as a file name.
+#   - if calling script does not success, exit script with exit code 1.
+#   - each error cases will be explained within the script 'installPackage'
+# - for the case the option is 'c':
+#   - Call the script 'ConfigRepo' and run it with provided argument as a user name.
+#   - if calling script does not success, exit script with exit code 1.
+#   - each error cases will be explained within the script 'ConfigRepo'
+# - for the any other one letter options:
+# - It will generate default error messages and exit with exit code 1.
