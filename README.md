@@ -1,8 +1,4 @@
-# linux-assignment2-nuree-na
-
 # Linux Assignment 2 Scripts Guide
-
---- 
 
 ## project-1
 The project-1 directory contains 4 files:
