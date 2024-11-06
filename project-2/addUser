@@ -6,16 +6,9 @@
 #   - User specify which shell they want to use as an argument with option '-s'.
 #   - User can provide other groupnames they want to get in as arguments with option '-g' 
 
-# reference:
-# - https://www.ibm.com/docs/en/aix/7.2?topic=s-sed-command
-# - https://www.digitalocean.com/community/tutorials/using-grep-regular-expressions-to-search-for-text-patterns-in-linux
-# - https://www.gnu.org/software/grep/manual/grep.html
-# - https://docs.linuxfoundation.org/lfx/project-control-center/v1-prior-version/tools/security/manage-false-positives/regular-expressions-cheat-sheet
-
-
-# initial empty variables.
+# Initial empty variables.
 # - these variables are initially empty and will be filled by functions success. 
-# - This is an intentional setup to check wether the function works or not in later script.
+# - This is an intentional setup to check wether the functions work or not in later steps in the script.
 userName=
 userHome=
 userShell=
@@ -23,9 +16,9 @@ userId=
 userGroups=()
 # 'userName' will be fiiled with the user name if it is available.
 # 'userHome' will be filled with the user's default home path if the user name is available.
-# 'userShell' will be fiiled with the user specifed shell if it is a valid shell.
+# 'userShell' will be fiiled with the user specifed shell if it is a valid shell type.
 # 'userId' will be filled with the user id that is availiable.
-# 'userGroups' will be filled with the group names that user want to enroll.
+# 'userGroups' will be filled with the exist group names that user want to enroll.
 
 # Function 'checkUserName'
 # - This function check if the given parameter is available user name.
@@ -40,7 +33,6 @@ checkUserName() {
     else
         userName="$name"
         userHome="/home/${name}"
-        echo "Username '${name}' is added."
     fi
 }
 # It takes the first parameter in a local variable 'name'.
@@ -57,11 +49,12 @@ checkUserName() {
 # - This function check if the given parameter is an available shell type.
 # - if it is available, it will update the variable 'userShell' with the given parameter.
 # - if not, it will return false.
+# reference:
+# - https://www.gnu.org/software/grep/manual/grep.html
 checkShell() {
     local shell="$1"
     if grep -Fxq "${shell}" "/etc/shells"; then
         userShell="$shell"
-        echo "Shell '${userShell}' is added."
     else
         echo "The '${shell}' is an invalid shell type!"
         return 1
@@ -75,17 +68,19 @@ checkShell() {
 #  - that means the user shell is valid.
 #  - update variable 'userShell' with the value of variable 'shell'.
 # If not exists:
-#  - print that does not exist and return 1 (false).
+#  - print that is invalid type and return 1 (false).
 
 # Function 'checkId'
 # - This function find a number for the available user id and group id. 
 # - it will check each number from 1000 up to maximum value of user id.
 # - if it find an available number, it will break loop and will update the variable 'userId' with the number found.
+# reference:
+# - https://www.digitalocean.com/community/tutorials/using-grep-regular-expressions-to-search-for-text-patterns-in-linux
+# - https://docs.linuxfoundation.org/lfx/project-control-center/v1-prior-version/tools/security/manage-false-positives/regular-expressions-cheat-sheet
 checkId() {
     for (( num=1000; num<4294967295; num++ )); do
         if ! grep -q "^[^:]*:[^:]*:${num}:" /etc/passwd && ! grep -q "^[^:]*:[^:]*:${num}:" /etc/group ; then
             userId="$num"
-            echo "User ID '${userId}' is given."
             break
         fi
     done
@@ -101,7 +96,6 @@ checkId() {
 #      - update variable 'userId' with the value of variable 'num'.
 #      - break the loop.
 
-
 # Function 'checkGroups'
 # - This function check if the given parameters are exist groups.
 # - if it is exist, it will append the given parameter to the array variable 'userGroups'.
@@ -110,16 +104,20 @@ checkGroups() {
     local groups=("$@")
     for group in "${groups[@]}"; do
         if grep -q "^${group}:" /etc/group; then
-            userGroups+=("$group")
+            if [[ ! "${userGroups[@]}" =~ "${group}" ]]; then
+                userGroups+=("$group")
+            fi
         else
             echo "Group name '${group}' does not exist."
         fi
     done
 }
-# It takes the multiple parameters in a local variable 'groups'.
-# It loops each group in the array 'groups'.
+# It takes the multiple parameters in a local array variable 'groups'.
+# It loops each group in the 'groups'.
 # - if the 'group:' exist at the beginning of any lines in the /etc/group file:
-#   - append array variable 'userGroups' with the value of variable 'group'.
+#   - if that group not in the global array variable 'userGroup':
+#       =~: compare 'group' is in 'userGroups[@]'
+#       - append the value of variable 'group' to 'userGroups'.
 # - If not exists:
 #   - print that does not exist.
 
@@ -131,7 +129,6 @@ mkHome() {
     local homePath="$1"
     if [[ ! -d "${homePath}" ]]; then
         mkdir "${homePath}"
-        echo "Home directory '${homePath}' is created."
     else
         echo "Home directory '${homePath}' already exists."
     fi
@@ -152,9 +149,8 @@ chownDir() {
     local path="$2"
     if grep -q "^${name}:" /etc/passwd && [[ -d "${path}" ]]; then
         chown "${name}:${name}" "${path}"
-        echo "Home directory '${path}'s ownership has been updated to '${name}:${name}'."
     else
-        echo "changing ownership failed!"
+        echo "changing '${path}'s ownership failed!"
         return 1
     fi
 }
@@ -166,7 +162,6 @@ chownDir() {
 # - If false:
 #   - print that request failed and return 1 (false).
 
-
 # Function 'mkGroup'
 # - This function check if the first given parameter is an exist group.
 # - if it is exist, it will return false.
@@ -176,7 +171,6 @@ mkGroup(){
     local groupid="$2"
     if ! grep -q "^${groupname}:" /etc/group; then
         echo "${groupname}:x:${groupid}:" >> /etc/group
-        echo "Default group name is'${groupname}', group ID is '${groupid}'."
     else
         echo "Group name '${groupname}' already exists."
         return 1
@@ -212,26 +206,31 @@ addUser(){
 # This function takes multiple parameters.
 # After first parameter, it will consider that as a group name and check if it exist.
 # if so, it will add a 'user' to the 'group'.
+# reference:
+# - https://www.ibm.com/docs/en/aix/7.2?topic=s-sed-command
+# - https://www.gnu.org/software/sed/manual/sed.html
+# - https://stackoverflow.com/questions/17232526/how-to-pass-an-array-argument-to-the-bash-script
 addGroups() {
-    local user="$1"
-    shift
-    for group in "$@"; do 
+    local user=$1
+    local groups=("${@:2}")
+    for group in "${groups[@]}"; do 
         local matchLine=$(grep "^${group}:" /etc/group)
-        if [[ $matchLine ]]; then 
+        if [[ $matchLine ]]; then
             if [[ $matchLine =~ :$ ]]; then
                 sed -i "s|^${matchLine}$|${matchLine}${user}|" /etc/group
             else
                 sed -i "s|^${matchLine}$|${matchLine},${user}|" /etc/group
             fi
-            echo "User '${user}' is added to a group '${group}'!"
         else
             echo "Group '${group}' does not exist."
         fi
     done
 }
 # It takes the first parameter in a local variable 'user'.
-# It shift position so that parameters after $1 are not consiederd as a user.
-# It loops through positional parameters.
+# It takes parameters from the second position to the end in a local array variable 'groups'.
+# - ${@}: every parameter that passed
+# - :2: means starting index. since index starts from 1, '${@:2}' means from second parameters to the end. 
+# It loops through group in 'groups'.
 #   - It creates a local variable 'matchLine' that grep a line start with 'group:' in the 'etc/group' file.
 #   - If match line exists:
 #       - Check if the 'matchLine' line end with the ':'.
@@ -245,7 +244,40 @@ addGroups() {
 #   - if match line does not exist:
 #       - print that does not exist.
 
+# Function 'cpSkel'
+# - This function copies everything in '/etc/skel/' directory to the given directory.
+cpSkel() {
+    local home=$1
+    if [[ -d $home ]]; then
+        cp -r /etc/skel/. "${home}/"
+    fi
+}
+# It takes the first parameter in a local variable 'home'.
+# It checks if the directory 'home' exists:
+# - if so, copy files from the path '/etc/skel/' to 'home' directory
+#  - -r: recursively copy frome the folder.
+#  - .: everything in the directory 'etc/skel'
 
+# Initial checking for error handling. 
+# - check if the user run this script with sudo previlege.
+# - check if any option is given
+# - check if options start with '-'. 
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "sudo privilege is required to run this script!"
+    exit 1
+elif [[ $# -eq 0 ]]; then
+    echo "Options should be provided!"
+    echo "-u (MANDATORY argument: USERNAME): a USERNAME that a user want to use."
+    echo "-s (MANDATORY argument: SHELLTYPE): a specific SHELLTYPE that a user want to use."
+    echo "-g (OPTIONAL arguments: GROUPNAMES): GROUPNAMES that you want to add user."
+    exit 1
+elif [[ $@ != -* ]]; then
+    echo "Options should start with '-'!"
+    echo "-u (MANDATORY argument: USERNAME): a USERNAME that a user want to use."
+    echo "-s (MANDATORY argument: SHELLTYPE): a specific SHELLTYPE that a user want to use."
+    echo "-g (OPTIONAL arguments: GROUPNAMES): GROUPNAMES that you want to add user."
+    exit 1
+fi
 # if the script run without sudo previlege:
 # - by checking the user id of who execute the script is 0 (always reserved for a root user) or else.
 # - print that user need sudo privilege.
@@ -260,81 +292,132 @@ addGroups() {
 # - print that option format is wrong.
 # - print option usage guide.
 # - exit script with exit code 1.
-if [[ "$(id -u)" -ne 0 ]]; then
-    echo "sudo privilege is required to run this script!"
-    exit 1
-elif [[ $# -eq 0 ]]; then
-    echo "Options should be provided!"
-    echo "-u (argument: username): a username you a user will use."
-    echo "-s (argument: shelltype): a specific shell type a user will use."
-    echo "-g (arguments: groupnames): (OPTIONAL) group names you want to add the user."
-    exit 1
-elif [[ $@ != -* ]]; then
-    echo "Options should be provided!"
-    echo "-u (argument: username): a username you a user will use."
-    echo "-s (argument: shelltype): a specific shell type a user will use."
-    echo "-g (arguments: groupnames): (OPTIONAL) group names you want to add the user."
-    exit 1
-fi
 
-# use 'getopts' and give three options 'u', 's' and 'g'. make all options require arguments with ':'.
-# - for the case the option is 'u'
-#   - Call the function 'checkUserName' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
-# - for the case the option is 's'
-#   - Call the function 'checkShell' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
-# - for the case the option is 'g'
-#   - Call the function 'checkGroups' with 'OPTARG' as parameters. if it returns 1(false) then exit with exitcode 1.
-# - for the any other options:
-# - It will generate default error messages and exit with exit code 1.
+# Give users option to check essentiol steps with functions.
+# - available user name, valid shell type, available group names.
+# Provide default error handling with getopts and case.
+# reference:
+# - https://stackoverflow.com/questions/11279423/bash-getopts-with-multiple-and-mandatory-options
+# - https://www.reddit.com/r/bash/comments/n8s7o5/use_getopts_to_parse_option_with_multiple_values/
+userFlag=false
+shellFlag=false
 while getopts "u:s:g:" opt; do
     case $opt in
         u)
             checkUserName "${OPTARG}" || exit 1
+            userFlag=true
         ;;
         s)
             checkShell "${OPTARG}" || exit 1
+            shellFlag=true
         ;;
         g)
-            checkGroups "${OPTARG}" || exit 1
+            groups+=( "$OPTARG" )
+            while [[ ${!OPTIND} && ${!OPTIND} != -* ]]; do
+                groups+=("${!OPTIND}")
+                ((OPTIND++))
+            done
+            checkGroups "${groups[@]}" || exit 1
         ;;
         ?)
             exit 1
         ;;  
     esac
 done
+if [[ $userFlag == false && $shellFlag == false ]]; then 
+    echo "option '-u' and '-s' are mandatory!"
+    exit 1
+elif [[ $userFlag == false ]]; then
+    echo "option '-u' is mandatory!"
+    exit 1
+elif [[ $shellFlag == false ]]; then
+    echo "option '-s' is mandatory!"
+    exit 1
+fi
+# set variable 'userFlag' and 'shellFlag' false.
+# use 'getopts' and give three options 'u', 's' and 'g'. make all options require arguments with ':'.
+# - for the case the option is 'u'
+#   - Call the function 'checkUserName' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
+#   - if not, update 'userFlag' to true.
+# - for the case the option is 's'
+#   - Call the function 'checkShell' with 'OPTARG' as a parameter. if it returns 1(false) then exit with exitcode 1.
+#   - if not, update 'shellFlag' to true.
+# - for the case the option is 'g'
+#   - adds the value of 'OPTARG' to the 'groups' array.
+#   - it loops through 'OPTIND' that come after the options that getopts has already processed.
+#       - !OPTIND: references the value at the index specified by 'OPTIND'.
+#   - and that does not start with '-', which means arguments but not options.
+#       - add that 'OPTIND' to 'groups'
+#       - add 1 to 'OPTIND'
+#   - Call the function 'checkGroups' with the items int an array 'groups'. if it returns 1(false) then exit with exitcode 1.
+# - for the any other options:
+# - It will generate default error messages and exit with exit code 1.
+# if 'userFlag' is false and 'shellFlag' is false:
+# - which means option 'u' and 's' are not called within getopts.
+# - print that those options are mandatory and then exit with exitcode 1.
+# else if 'userFlag' is false:
+# - print that option is mandatory and then exit with exitcode 1.
+# else if 'shellFlag' is false:
+# - print that option is mandatory and then exit with exitcode 1.
 
+# Run script
 # Call the function 'checkId' to find and store available user id to the variable 'userId'
-# check if a variable 'userName' is not null and a variable 'userId' is not null and a variable 'userShell' is not null
-# - if variables 'userName', 'userId', 'userShell' have values:
-#   - this means all those functions were called without faliure.
+# check if a variable 'userName' is not null and a variable 'userId' is not null and a variable 'userShell' is not null:
+# - this means all of those three functions were called without faliure.
 #   - Call the function 'addUser' to add user with the values of the variables.
 #   - Call the function 'mkGroup' to create a new user's default group.
+#       - if it returns 1, print error messeage and then exit script. 
 #   - Call the function 'mkHome' to create a new user's home directory.
 #   - Call the function 'chownDir' to change ownership of user's home path.
-#   - check if directory 'userHome' exists:
-#       - copy files from the path '/etc/skel' to 'userHome/'
-#       - -r: recursively copy frome the folder.
-#       - .: everything in the directory 'etc/skel'
-#   - check if 'userGroups' is not null:
+#       - if it returns 1, print error messeage and then exit script. 
+#   - Call the function 'cpSkel' to copy given files to the 'userHome' directory.
+#   - check if 'userGroups' is greater than 0:
 #       - this means user provided additional groups info that they want to add.
-#       - Call the function 'addGroups' to add the user into the given group names.
+#       - Call the function 'addGroups' with 'userName' and the array 'userGroups' to add the user into the given group names.
+#   - print that a new user account created with a new user information.
+#       - check if 'userGroups' is greater than 0:
+#           - print userGroups + default group in 'added group' field.
+#       - if not:
+#           - print only default group in 'added group' field.
 #   - require user to create password by using 'passwd'
+#   - make a loop for user try to set a password until success.
+#       - do loop while 'passwdSet' variable false
+#       - when passwd 'userName' success, update 'passwdSet' variable true.
 # - if not all variables 'userName', 'userId', 'userShell' have values:
 #   - print that information is incorrect and exit script with exitcode 1.
 checkId
 if [[ -n "${userName}" && -n "${userId}" && -n "${userShell}" ]]; then
-    addUser "${userName}" "${userId}" "${userShell}" || { echo "Failed to create user"; exit 1; }
-    mkGroup "${userName}" "${userId}" || { echo "Failed to create a group"; exit 1; }
-    mkHome "${userHome}" || { echo "Failed to create home directory"; exit 1; }
-    chownDir "${userName}" "${userHome}" || { echo "Failed to change ownership"; exit 1; }
-    if [[ -d $userHome ]]; then
-        cp -r /etc/skel/. "${userHome}/"
+    addUser "${userName}" "${userId}" "${userShell}"
+    mkGroup "${userName}" "${userId}" || { exit 1; }
+    mkHome "${userHome}"
+    chownDir "${userName}" "${userHome}" || { exit 1; }
+    cpSkel "${userHome}"
+    if [[ ${#userGroups[@]} -gt 0 ]]; then
+        addGroups "$userName" "${userGroups[@]}"
     fi
-    if [[ -n $userGroups ]]; then
-        addGroups "$userName" "$@"
+    echo "a new user account has been successfully created."
+    echo
+    echo "User    Name: ${userName}"
+    echo "User      ID: ${userId}"
+    echo "Group     ID: ${userId}"
+    echo "Shell   Type: ${userShell}"
+    echo "User    Home: ${userHome}"
+    if [[ ${#userGroups[@]} -gt 0 ]]; then
+        echo "Added Groups: ${userGroups[@]} ${userName}"
+    else
+        echo "Added Groups: ${userName}"
     fi
-    echo "a new user account for '${userName}' has been successfully created. Please make a password!"
-    passwd "${userName}" || { echo "Failed to create password"; exit 1; }
+    echo
+    passwdSet=false
+    while [[ "$passwdSet" = false ]]; do
+        echo "Please make a password!"
+        if passwd "${userName}"; then
+            echo "Password set successfully!"
+            passwdSet=true
+        else 
+            echo "Password setup failed. Please try again."
+        fi
+    done
 else
     echo "incorrect information!"
     exit 1
