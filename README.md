@@ -12,15 +12,16 @@ The project-1 directory contains 4 files:
 - **main** = a script that calls and controls other two scripts.
 1 file:
 - **packages** = a list of package names to install.
-### To run the script
-1. Run `main` script. 
-	- Must use `sudo` privilege. 
-	- Must provide at least one of the options:
-		- `-i` to install packages:
-			- an argument is required: `FILENAME`
-			- use `packages` file to modify packages to install
-		- `-c` to clone and config repository:
-			- an argument is required: `USERNAME`
+### To run the script 'main'
+- Must be in the directory contains `configRepo`, `installPackage` and `main`.
+- Must use `sudo` privilege. 
+- Must provide at least one of the options:
+	- `-i` to install packages:
+		- an argument is required: `FILENAME`
+		- `packages` file contains default packages.
+		- user can add, modify and/or delete, this file `packages` or use another file.
+	- `-c` to clone and config repository:
+		- an argument is required: `USERNAME`
 ### Scripts details
 #### `configRepo`
 - This script does two main things:
@@ -46,6 +47,7 @@ The project-1 directory contains 4 files:
 - This script does one main things:
 - Calls two other scripts and run it with `getopts` option control.  
 - **1. Initial checking for error handling.**
+	- User must be in the direcotry with required scripts `configRepo`, `installPackage` and `main`.
 	- User must run this script with `sudo` previllege. 
 	- User must provide options.
 	- User must follow the option syntax (starts with dash '-')
@@ -63,23 +65,22 @@ The project-1 directory contains 4 files:
 The project-2 directory contains 1 file:
 1 script:
 - **addUser** = a script that creates a new user.
-### To run the script
-1. Run `addUser` script. 
-	- Must use `sudo` privilege. 
-	- Must provide both options:
-		- `-u` to make a new user name:
-			- an argument is required: `USERNAME`
-			- `USERNAME` must be unique.
-				- If not, try again.
-		- `-s` specify a shell type to use:
-			- an argument is required: `SHELLTYPE`
-			- `SHELLTYPE` must be a full path of valid shell type.
-				- eg. `/bin/bash`
-	- Optional option:
-		- `-g` to add user to other groups:
-			- an argument is required: `GROUPNAME`
-			- multiple arguments are accepted.
-				- eg. `group1 group2 group3`
+### To run the script 'addUser'
+- Must use `sudo` privilege. 
+- Must provide both options:
+	- `-u` to make a new user name:
+		- an argument is required: `USERNAME`
+		- `USERNAME` must be unique.
+			- If not, try again.
+	- `-s` specify a shell type to use:
+		- an argument is required: `SHELLTYPE`
+		- `SHELLTYPE` must be a full path of valid shell type.
+			- eg. `/bin/bash`
+- Optionally provide option:
+	- `-g` to add user to other groups:
+		- an argument is required: `GROUPNAME`
+		- multiple arguments are accepted.
+			- eg. `group1 group2 group3`
 ### Scripts details
 #### `addUser`
 - This script does one main things:
