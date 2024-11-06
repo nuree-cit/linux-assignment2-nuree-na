@@ -12,27 +12,48 @@
 #     -c: clone the repository and config the symbolic links. 
 #        - argument should be provided for the username.
 
-# Initial checking for error handling. 
+# Initial checking for error handling.
+# check if all necessary script files exist in current directory.
 # check if the user run this script with sudo previlege.
 # check if any option is given
 # check if options start with '-'. 
 # reference:
 # - https://unix.stackexchange.com/questions/50563/how-can-i-detect-that-no-options-were-passed-with-getopts
 # - https://stackoverflow.com/questions/18215973/how-to-check-if-running-as-root-in-a-bash-script
-if [[ "$(id -u)" -ne 0 ]]; then
+if [[ ! -f "./configRepo" || ! -f "./installPackage" || ! -f "./main" ]]; then
+    echo "files 'configRepo', 'installPackage' and 'main' must be presented in the curreunt directory!"
+    echo "move into the directory that contains those files before running the script."
+    exit 1
+elif [[ "$(id -u)" -ne 0 ]]; then
     echo "sudo privilege is required to run this script!"
     exit 1
 elif [[ $# -eq 0 ]]; then
-    echo "Options should be provided!"
-    echo "-i (MANDATORY argument: FILENAME): install packages from the file [FILENAME]."
-    echo "-c (MANDATORY argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    echo "Options must be provided!"
+    echo
+    echo "To install packages:"
+    echo "  -i: MANDATORY option. install packages in the file [FILENAME]"
+    echo "      MANDATORY argument [FILENAME]"
+    echo
+    echo "To clone repository and to configure symbolic links:" 
+    echo "  -c: MANDATORY option. clone git repository to the [USERNAME]'s directory and create symbolic links"
+    echo "      MANDATORY argument [USERNAME]"
+    echo
     exit 1
 elif [[ $@ != -* ]]; then
-    echo "Options should start with '-'!"
-    echo "-i (MANDATORY argument: FILENAME): install packages from the file [FILENAME]."
-    echo "-c (MANDATORY argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    echo "Options must start with '-'!"
+    echo "To install packages:"
+    echo "  -i: MANDATORY option. install packages in the file [FILENAME]"
+    echo "      MANDATORY argument [FILENAME]"
+    echo
+    echo "To clone repository and to configure symbolic links:" 
+    echo "  -c: MANDATORY option. clone git repository to the [USERNAME]'s directory and create symbolic links"
+    echo "      MANDATORY argument [USERNAME]"
+    echo
     exit 1
 fi
+# if the script 'configRepo' or 'installPackage' or 'main' is not presented in the currunt directory.
+# - print that user need to locate them in the current folder.
+# - exit script with exit code 1.
 # if the script run without sudo previlege:
 # - by checking the user id of who execute the script is 0 (always reserved for a root user) or else.
 # - if not, print that user need sudo privilege.
@@ -53,10 +74,10 @@ fi
 while getopts "i:c:" opt; do
   case $opt in
     i)
-        ./installPackage "${OPTARG}" || exit 1
+        source installPackage "${OPTARG}" || exit 1
     ;;
     c)
-        ./configRepo "${OPTARG}" || exit 1
+        source configRepo "${OPTARG}" || exit 1
     ;;
     ?)
         exit 1
