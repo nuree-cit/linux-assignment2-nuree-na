@@ -266,16 +266,38 @@ if [[ "$(id -u)" -ne 0 ]]; then
     echo "sudo privilege is required to run this script!"
     exit 1
 elif [[ $# -eq 0 ]]; then
-    echo "Options should be provided!"
-    echo "-u (MANDATORY argument: USERNAME): a USERNAME that a user want to use."
-    echo "-s (MANDATORY argument: SHELLTYPE): a specific SHELLTYPE that a user want to use."
-    echo "-g (OPTIONAL arguments: GROUPNAMES): GROUPNAMES that you want to add user."
+    echo "Options must be provided!"
+    echo
+    echo "To create a user:"
+    echo "  -u: MANDATORY option. create a user name [USERNAME]"
+    echo "      MANDATORY argument [USERNAME]"
+    echo "      [USERNAME] must be unique"
+    echo "  -s: MANDATORY option. specify a shell type [SHELLTYPE]"
+    echo "      MANDATORY argument [SHELLTYPE]"
+    echo "      [SHELLTYPE] must be completed"
+    echo
+    echo "To add user to additional groups:"
+    echo "  -g: OPTIONAL option. add user to group [GROUPNAME]"
+    echo "      MANDATORY argument [GROUPNAME]"
+    echo "      Multiple [GROUPNAMES] are accepted"
+    echo
     exit 1
 elif [[ $@ != -* ]]; then
-    echo "Options should start with '-'!"
-    echo "-u (MANDATORY argument: USERNAME): a USERNAME that a user want to use."
-    echo "-s (MANDATORY argument: SHELLTYPE): a specific SHELLTYPE that a user want to use."
-    echo "-g (OPTIONAL arguments: GROUPNAMES): GROUPNAMES that you want to add user."
+    echo "Options must be started with '-'!"
+    echo
+    echo "To create a user:"
+    echo "  -u: MANDATORY option. create a user name [USERNAME]"
+    echo "      MANDATORY argument [USERNAME]"
+    echo "      [USERNAME] must be unique"
+    echo "  -s: MANDATORY option. specify a shell type [SHELLTYPE]"
+    echo "      MANDATORY argument [SHELLTYPE]"
+    echo "      [SHELLTYPE] must be completed"
+    echo
+    echo "To add user to additional groups:"
+    echo "  -g: OPTIONAL option. add user to group [GROUPNAME]"
+    echo "      MANDATORY argument [GROUPNAME]"
+    echo "      Multiple arguments [GROUPNAMES] are accepted"
+    echo
     exit 1
 fi
 # if the script run without sudo previlege:
