@@ -24,13 +24,13 @@ if [[ "$(id -u)" -ne 0 ]]; then
     exit 1
 elif [[ $# -eq 0 ]]; then
     echo "Options should be provided!"
-    echo "-i (argument: FILENAME): install packages from the file [FILENAME]."
-    echo "-c (argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    echo "-i (MANDATORY argument: FILENAME): install packages from the file [FILENAME]."
+    echo "-c (MANDATORY argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
     exit 1
 elif [[ $@ != -* ]]; then
     echo "Options should start with '-'!"
-    echo "-i (argument: FILENAME): install packages from the file [FILENAME]."
-    echo "-c (argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
+    echo "-i (MANDATORY argument: FILENAME): install packages from the file [FILENAME]."
+    echo "-c (MANDATORY argument: USERNAME): clone git repository to the [USERNAME]'s directory and create symbolic links."
     exit 1
 fi
 # if the script run without sudo previlege:
