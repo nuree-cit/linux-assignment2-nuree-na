@@ -1,75 +1,28 @@
 #!/bin/bash
 
 # 'installPackage' script does:
-#   - It will provide a funtion to create a file to store packages list to install.
-#       - default packages will be included.
-#   - It will provide a function to open the file with nvim editor.
-#       - user can add packages that they want to install by calling this function.
-#   - It will provide a function to install packages in the file.
+#   - It will provide a funtion to install packages from a file that is provided as an argument.
 
-# reference:
-# - https://wiki.archlinux.org/title/Pacman
-# - https://www.digitalocean.com/community/tutorials/grep-command-in-linux-unix
-
-# 'defaultPackages' array stores the list of default pakages.
-# 'packageList' is a file that stores all the installed packages list.
-#   - It will be used to check what packages are installed.
-defaultPackages=("git" "kakoune" "tmux")
+# 'packageList' is a file that will store all the installed packages list.
+#   - It will be used to check what packages the user already had.
 packageList="./packagesList"
-
-# Function 'createList'
-# - This function takes a parameter as a name of file to create.
-# - it check if the name is available and create a file with the parameter 'name'
-# - and it will store default packages.
-createList() {
-    local listName="$1"
-    if [[ -f "${listName}" ]]; then
-        echo "File name '${listName}' already exists. Please provide a different file name!"
-        return 1
-    else
-        for package in "${defaultPackages[@]}"; do
-            echo "$package"
-        done > "${listName}"
-        echo "File name '${listName}' has been created!"
-    fi
-}
-# It takes the first parameter in a local variable 'listName'.
-# It check if the 'listName' already exists.
-# - if so, print that is exist and return 1 (false).
-# If not exists:
-#  - it loops through items in array 'defaultPackages' and store them into the list file.
-#  - print that file has been created.
-
-# Function 'openList'
-# - This function takes a parameter as a name of file to open.
-# - it check if the name of the file exists and open it with nvim editor.
-openList() {
-    local listName="$1"
-    if [[ -f "${listName}" ]]; then
-        nvim "${listName}"
-    else
-        echo "File name '${listName}' does not exist!"
-        return 1
-    fi
-}
-# It takes the first parameter in a local variable 'listName'.
-# It check if the 'listName' already exists.
-# - open the file with nvim editor.
-# If not exists:
-# - print that does not exist and return 1 (false).
 
 # Function 'installPackages'
 # - This function takes a parameter as a name of file contains list of packages to install.
-# - it will update currently installed packages and compare them with the provided list.
-# - it will check each item in the list and if the package is already installed, it will skip it, otherwise it will try to install it.
+# - it will update currently installed packages and it will compare each package in the list.
+# - if the package is already installed, it will skip it, otherwise it will try to install it.
 # - if the package does not exist, it will print that and keep going for the next item.
+# reference:
+# - https://wiki.archlinux.org/title/Pacman
+# - https://www.digitalocean.com/community/tutorials/grep-command-in-linux-unix
+# - https://medium.com/@linuxadminhacks/understanding-mapfile-command-in-linux-9a13a2e2008a
 installPackages() {
-    local listName="$1"
-    if [[ -f "${listName}" ]]; then
+    local fileName="$1"
+    if [[ -f "${fileName}" ]]; then
       local lines=()
       pacman -Syuq --noconfirm
       pacman -Qq > "$packageList"
-      mapfile -t lines < "${listName}"
+      mapfile -t lines < "${fileName}"
       for package in "${lines[@]}"; do
           if grep -qw "$package" "$packageList"; then
               echo "A package '${package}' already exists!"
@@ -89,28 +42,28 @@ installPackages() {
       done
       rm -r "$packageList"
       else
-      echo "File name '${listName}' does not exist!"
+      echo "File name '${fileName}' does not exist!"
       return 1
     fi
 }
-# It takes a parameter in a local array variable 'listName'.
-# It checks if the file 'listName' exists.
+# It takes a parameter in a local array variable 'fileName'.
+# It checks if the file 'fileName' exists.
 # it creates an empty local array 'lines'
 # It updates all the installed packages without confirmation steps and printing details.
 #   -S: install and/or update packages.
 #   -y: synchronize packages database.
-#   -u: update all installed packages
-#   -q: quietly continue processes without printing all information.
-# It creates a text file named 'packageList' which means "./packagesList" and put content of:
+#   -u: update all installed packages.
+#   -q: quietly continue processes with only printing minimum information.
+# It creates a text file named 'packageList' which means "./packagesList" and put contents of:
 #   -Q: installed packages information
-#   -q: minimize printing data (so only include names of packages)
-# It stores each line from the file 'listName' into the variable 'lines'.
+#   -q: minimize printing data (so only names of packages will be included)
+# It stores each line from the file 'fileName' into the array variable 'lines'.
 # - mapfile: read file as an array
-# - t: delete line changing character if exists. (e.g. \n) 
+# - t: delete special line changing characters if exists. (e.g. \n) 
 # - It loops through each item in the 'lines' array.
 #   - If the name of 'item' exist in the 'packageList':
-#     -q: 'grep' command prints output by default, make it not to.
-#     -w: check only matches exaclty the same (not include partial matches)
+#     -q: 'grep' command prints output by default. '-q' option makes it not to.
+#     -w: check only matches exaclty the same name (partial matches will not be included)
 #     - Print that the package exists.
 #   - else:
 #     - it install the package name of 'item'.
@@ -123,10 +76,10 @@ installPackages() {
 #     - if the exit code of previous step(installing package) is not 0:
 #       - print that the installation failed.
 # - remove the file 'packageList'.
-# if the file 'listName' not exists:
+# if the file 'fileName' not exists:
 # - print that does not exist and return 1 (false).
 
-# export functions to make them usable in another script
-export -f createList
-export -f openList
-export -f installPackages
+# Calling 'installPackages' function with positional parameter 1.
+installPackages $1
+
+
