@@ -4,10 +4,6 @@
 #   - It will clone the given git repository and store in the user home directory.
 #   - it will create symbolic links from user home directory to the given repository.
 
-# reference:
-# - https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository
-# - https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-links
-
 # 'gitAddress' stores the https link of the given git repository.
 # 'gitFolder' empty global varaible will be filled with repository path by successfully calling function. 
 # 'home' empty global varaible will be filled with user home path by successfully calling function.
@@ -19,6 +15,8 @@ home=
 # - This function takes a parameter as a user name and make a home path with the given name.
 # - it clone git repository.
 # - if it exists, it will skip cloning.
+# reference:
+# - https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository
 gitClone() {
     local user=$1
     home="/home/${user}"
@@ -26,7 +24,7 @@ gitClone() {
     if [[ -d "$gitFolder" ]] ; then
         echo "Git repository [${gitAddress}] already exists!"
     else
-        git clone "$gitAddress"
+        git clone "$gitAddress" "$gitFolder"
         if [[ -d "$gitFolder" ]] ; then
             echo "Git repository [${gitAddress}] has been successfully cloned to '${home}'!"
         else
@@ -50,6 +48,9 @@ gitClone() {
 # Function 'createSymbolicLink'
 # - This function takes a parameter as a user name and make paths that are needed.
 # - it creates symbolic links.
+# reference:
+# - https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-links
+# - https://learning.oreilly.com/library/view/linux-pocket-guide/9780596806347/re15.html
 createSymbolicLink() {
     local user=$1
     local home="/home/${user}"
@@ -68,6 +69,8 @@ createSymbolicLink() {
 # It makes a user home/.config path 'homeConfig'
 # It makes a symbolic link from 'homeBin' to cloned repository's bin.
 # - if it works, print that symbolic link created. (combined with and && or || operator)
+#   -s: create symbolic link
+#   -f: forcely to update if the symbolic link already exist.
 # - if not works, print that failed and return 1 (false)
 # It makes a symbolic link from 'homeConfig' to cloned repository's config.
 # - if it works, print that symbolic link created.
@@ -78,7 +81,22 @@ createSymbolicLink() {
 # - if it works, print that symbolic link created.
 # - if not works, print that failed and return 1 (false)
 
-
-# export functions to make them usable in another script
-export -f gitClone
-export -f createSymbolicLink
+#store first positional parameter into variable 'userName'.
+# It check if the 'username:' not exist at the beginning of any lines in the /etc/passwd file.
+#  -q: quitely check result with 0 or 1 without printing match data.
+#   ^: search the data from beginning of lines. 
+# If not exists:
+# - print that does not exist and exit script.
+# If it exists:
+#  - call the function 'gitClone' with the variable 'userName'.
+#  - call the function 'createSymbolicLink' with the variable 'userName'.
+# reference:
+#  - https://www.digitalocean.com/community/tutorials/grep-command-in-linux-unix
+userName="$1"
+if ! grep -q "^${userName}:" /etc/passwd; then
+    echo "Username '${userName}' not exists!"
+    exit 1
+else
+    gitClone "$userName" || { echo "Failed to clone repository!"; exit 1; }
+    createSymbolicLink "$userName"
+fi
