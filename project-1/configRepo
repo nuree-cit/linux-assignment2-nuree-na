@@ -48,6 +48,7 @@ gitClone() {
 # Function 'createSymbolicLink'
 # - This function takes a parameter as a user name and make paths that are needed.
 # - it creates symbolic links.
+# - it changes ownership of directory recursively.
 # reference:
 # - https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-links
 # - https://learning.oreilly.com/library/view/linux-pocket-guide/9780596806347/re15.html
@@ -62,6 +63,7 @@ createSymbolicLink() {
         rm "$home/.bashrc"
     fi
     ln -sf "$gitFolder/home/bashrc" "$home/.bashrc" && echo "Symbolic link '${home}/.bashrc' to file '${gitFolder}/home/bashrc' has been created!" || { echo "Failed to create symbolic link for '${gitFolder}/home/bashrc'"; exit 1; }
+    chown -R "${user}:${user}" "${home}"
 }
 # It takes the first parameter in a local variable 'user'.
 # It makes a user home path 'home' with the parameter 'user'.
@@ -80,6 +82,8 @@ createSymbolicLink() {
 # It makes a symbolic link from 'home/.bashrc' to cloned repository's home/bashrc.
 # - if it works, print that symbolic link created.
 # - if not works, print that failed and return 1 (false)
+# - change ownership of everything in 'home' path to the user 'user' and group 'user'
+#       -R: to change ownership recursively in the path.
 
 #store first positional parameter into variable 'userName'.
 # It check if the 'username:' not exist at the beginning of any lines in the /etc/passwd file.
