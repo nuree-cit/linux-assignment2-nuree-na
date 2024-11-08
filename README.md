@@ -1,24 +1,76 @@
 # Linux Assignment 2 Scripts Guide
+## Prerequisites
+To successfully run the scripts, users are required:
+- An Arch Linux OS system with Bash shell.
+- A user account with permission to access to root through `sudo` privilege.
 
 ## project-1
-The project-1 directory contains 4 files:
+`project-1` is designed to help users to configure initial setup.
+
+It specifically allows users to:
+- clone given git repository and create symbolic links.
+- install packages to the current user account.
+This will be done by running the script `main` with options.
+
+The `project-1` directory contains 4 files:
 3 scripts:
 - **configRepo** = a script that clones given repository and creates symbolic links.
 - **installPackage** = a script that installs packages from a file provided.
 - **main** = a script that calls and controls other two scripts.
 1 file:
 - **packages** = a list of package names to install.
-### To run the script 'main'
+
+### To run the script `main`
+```bash
+sudo ./main -i packages -c Nuree
+```
 - Must be in the directory contains `configRepo`, `installPackage` and `main`.
 - Must use `sudo` privilege. 
 - Must provide at least one of the options:
 	- `-i` to install packages:
 		- an argument is required: `FILENAME`
 		- `packages` file contains default packages.
-		- user can add, modify and/or delete, this file `packages` or use another file.
+		- user can add, modify and/or delete, the file `packages` or can use another file.
 	- `-c` to clone and config repository:
 		- an argument is required: `USERNAME`
-### Scripts details
+		- A user `USERNAME` must exists.
+
+---
+## project-2
+`project-2` is designed to help users to create a new user account.
+
+It specifically allows users to:
+- create a new user with user name.
+- specify a shell type that the new user will use.
+- add the new user to additional group(s).
+This will be done by running the script `Adduser` with options.
+
+The `project-2` directory contains 1 file:
+1 script:
+- **addUser** = a script that creates a new user.
+
+### To run the script `addUser`
+```bash
+sudo ./addUser -u Nuree -s /bin/bash -g cit bobsgroup
+```
+- Must use `sudo` privilege. 
+- Must provide both options:
+	- `-u` to make a new user name:
+		- an argument is required: `USERNAME`
+		- `USERNAME` must be unique.
+			- eg. `Nuree`
+	- `-s` specify a shell type to use:
+		- an argument is required: `SHELLTYPE`
+		- `SHELLTYPE` must be a full path of valid shell type.
+			- eg. `/bin/bash`
+- Optionally provide option:
+	- `-g` to add user to other groups:
+		- an argument is required: `GROUPNAME`
+		- multiple arguments are accepted.
+			- eg. `group1 group2 group3`
+
+## Scripts details
+### [project-1]
 #### `configRepo`
 - This script does two main things:
 - take a `user name`
@@ -56,28 +108,7 @@ The project-1 directory contains 4 files:
 		- an argument `username` is required.
 		- `username` = a user to clone and create symbolic links
 
----
-## project-2
-The project-2 directory contains 1 file:
-1 script:
-- **addUser** = a script that creates a new user.
-### To run the script 'addUser'
-- Must use `sudo` privilege. 
-- Must provide both options:
-	- `-u` to make a new user name:
-		- an argument is required: `USERNAME`
-		- `USERNAME` must be unique.
-			- If not, try again.
-	- `-s` specify a shell type to use:
-		- an argument is required: `SHELLTYPE`
-		- `SHELLTYPE` must be a full path of valid shell type.
-			- eg. `/bin/bash`
-- Optionally provide option:
-	- `-g` to add user to other groups:
-		- an argument is required: `GROUPNAME`
-		- multiple arguments are accepted.
-			- eg. `group1 group2 group3`
-### Scripts details
+### [project-2]
 #### `addUser`
 - This script does one main things:
 - create a new user
