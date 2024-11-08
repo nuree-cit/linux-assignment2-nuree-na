@@ -16,18 +16,19 @@ packageList="./packagesList"
 # - https://wiki.archlinux.org/title/Pacman
 # - https://www.digitalocean.com/community/tutorials/grep-command-in-linux-unix
 # - https://medium.com/@linuxadminhacks/understanding-mapfile-command-in-linux-9a13a2e2008a
+# - https://www.digitalocean.com/community/tutorials/dev-null-in-linux
 installPackages() {
     local fileName="$1"
     if [[ -f "${fileName}" ]]; then
       local lines=()
-      pacman -Syuq --noconfirm
+      pacman -Syu --noconfirm > /dev/null
       pacman -Qq > "$packageList"
       mapfile -t lines < "${fileName}"
       for package in "${lines[@]}"; do
           if grep -qw "$package" "$packageList"; then
               echo "A package '${package}' already exists!"
           else
-              pacman -Sq --noconfirm "$package"
+              pacman -S --noconfirm "$package" > /dev/null
               if [[ $? -eq 0 ]]; then
                   pacman -Qq > "$packageList"
                       if grep -qw "$package" "$packageList"; then
@@ -53,7 +54,8 @@ installPackages() {
 #   -S: install and/or update packages.
 #   -y: synchronize packages database.
 #   -u: update all installed packages.
-#   -q: quietly continue processes with only printing minimum information.
+#   ->/dev/null: A special file in the system that acts as a trash can. data written to this file is discarded without any effects.
+#   - all update messages will be discarded, but error messages will still be printed.
 # It creates a text file named 'packageList' which means "./packagesList" and put contents of:
 #   -Q: installed packages information
 #   -q: minimize printing data (so only names of packages will be included)
@@ -81,5 +83,3 @@ installPackages() {
 
 # Calling 'installPackages' function with positional parameter 1.
 installPackages $1
-
-
