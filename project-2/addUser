@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 'addUser' script does:
-#   - It will add a new user.
+#   - It will create a new user account.
 #   - User provide username as an argument with option '-u'.
 #   - User specify which shell they want to use as an argument with option '-s'.
-#   - User can provide other groupnames they want to get in as arguments with option '-g' 
+#   - User can provide other groupnames they want to add the user in as arguments with option '-g' 
 
 # Initial empty variables.
 # - these variables are initially empty and will be filled by functions success. 
@@ -148,7 +148,7 @@ chownDir() {
     local name="$1"
     local path="$2"
     if grep -q "^${name}:" /etc/passwd && [[ -d "${path}" ]]; then
-        chown "${name}:${name}" "${path}"
+        chown -R "${name}:${name}" "${path}"
     else
         echo "changing '${path}'s ownership failed!"
         return 1
@@ -159,6 +159,7 @@ chownDir() {
 # It checks if the 'name:' exist at the beginning of any lines in the '/etc/passwd' file and if the directory 'path' exist.
 # - If both are true:
 #   - change ownership of the 'path' to the user 'name' and group 'name'
+#       -R: to change ownership recursively of the path.
 # - If false:
 #   - print that request failed and return 1 (false).
 
@@ -390,9 +391,10 @@ fi
 #   - Call the function 'mkGroup' to create a new user's default group.
 #       - if it returns 1, print error messeage and then exit script. 
 #   - Call the function 'mkHome' to create a new user's home directory.
-#   - Call the function 'chownDir' to change ownership of user's home path.
-#       - if it returns 1, print error messeage and then exit script. 
 #   - Call the function 'cpSkel' to copy given files to the 'userHome' directory.
+#   - Call the function 'chownDir' to change ownership of user's home path.
+#       - to change everything's onwership in the path, call this function as the last step. 
+#       - if it returns 1, print error messeage and then exit script. 
 #   - check if 'userGroups' is greater than 0:
 #       - this means user provided additional groups info that they want to add.
 #       - Call the function 'addGroups' with 'userName' and the array 'userGroups' to add the user into the given group names.
@@ -403,6 +405,7 @@ fi
 #           - print only default group in 'added group' field.
 #   - require user to create password by using 'passwd'
 #   - make a loop for user try to set a password until success.
+#       - so that users will not fail to set password by accidentally type different passwords twice.
 #       - do loop while 'passwdSet' variable false
 #       - when passwd 'userName' success, update 'passwdSet' variable true.
 # - if not all variables 'userName', 'userId', 'userShell' have values:
@@ -412,11 +415,11 @@ if [[ -n "${userName}" && -n "${userId}" && -n "${userShell}" ]]; then
     addUser "${userName}" "${userId}" "${userShell}"
     mkGroup "${userName}" "${userId}" || { exit 1; }
     mkHome "${userHome}"
-    chownDir "${userName}" "${userHome}" || { exit 1; }
     cpSkel "${userHome}"
     if [[ ${#userGroups[@]} -gt 0 ]]; then
         addGroups "$userName" "${userGroups[@]}"
     fi
+    chownDir "${userName}" "${userHome}" || { exit 1; }
     echo "a new user account has been successfully created."
     echo
     echo "User    Name: ${userName}"
